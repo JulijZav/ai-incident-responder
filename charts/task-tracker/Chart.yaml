@@ -1,0 +1,7 @@
+apiVersion: v2
+name: task-tracker
+description: Task tracker (FastAPI + Postgres) kot workload za AI incident responder
+
+version: 0.1.0
+
+appVersion: "0.1.0"
