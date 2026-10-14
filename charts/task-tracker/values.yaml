@@ -18,3 +18,20 @@ api:
 
 service:
   port: 80
+
+postgres:
+  image: postgres:16.4
+  user: tasktracker
+  database: tasktracker
+
+  password: ""
+
+  storage: 1Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
