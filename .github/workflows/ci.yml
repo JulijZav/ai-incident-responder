@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  chart:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: azure/setup-helm@v4
+
+      - name: Lint chart
+        run: helm lint charts/task-tracker --set postgres.password=ci
+
+      - name: Render chart
+        run: helm template tt charts/task-tracker --set postgres.password=ci
