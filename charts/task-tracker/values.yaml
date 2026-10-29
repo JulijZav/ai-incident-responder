@@ -3,7 +3,7 @@ api:
 
   image:
     repository: task-tracker
-    tag: "0.1.0"
+    tag: "0.2.1"
     pullPolicy: Never
 
   port: 8000
@@ -35,3 +35,7 @@ postgres:
     limits:
       cpu: 500m
       memory: 512Mi
+
+serviceMonitor:
+  enabled: true
+  interval: 15s

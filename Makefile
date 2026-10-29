@@ -8,7 +8,7 @@ KPS_RELEASE			:= kps
 KPS_VERSION			?= 92.10.1
 
 TASK_TRACKER_DIR	?= ../task-tracker
-APP_VERSION 		?= 0.1.0
+APP_VERSION 		?= 0.2.1
 IMAGE 				?= task-tracker:$(APP_VERSION)
 
 .PHONY: help up down cluster image deploy status observability grafana prometheus
