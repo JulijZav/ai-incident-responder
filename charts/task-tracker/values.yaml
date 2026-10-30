@@ -1,9 +1,10 @@
 api:
+  logLevel: INFO
   replicas: 2
 
   image:
     repository: task-tracker
-    tag: "0.2.1"
+    tag: "0.3.0"
     pullPolicy: Never
 
   port: 8000

@@ -8,10 +8,10 @@ KPS_RELEASE			:= kps
 KPS_VERSION			?= 92.10.1
 
 TASK_TRACKER_DIR	?= ../task-tracker
-APP_VERSION 		?= 0.2.1
+APP_VERSION 		?= 0.3.0
 IMAGE 				?= task-tracker:$(APP_VERSION)
 
-.PHONY: help up down cluster image deploy status observability grafana prometheus
+.PHONY: help up down cluster image deploy status observability grafana prometheus api
 
 help: ## Show available commands
 	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-8s %s\n", $$1, $$2}'
@@ -63,3 +63,6 @@ grafana: ## Open Grafana on http://localhost:3000 (user: admin)
 
 prometheus: ## Open Prometheus on http://localhost:9090
 	kubectl port-forward -n $(MONITORING_NS) svc/$(KPS_RELEASE)-prometheus 9090:9090
+
+api: ## Open task-tracker API on http://localhost:8000
+	kubectl port-forward -n $(NAMESPACE) svc/$(RELEASE)-api 8000:80

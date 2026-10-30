@@ -35,6 +35,8 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-db
                   key: DATABASE_URL
+            - name: LOG_LEVEL
+              value: {{ .Values.api.logLevel | quote }}
           readinessProbe:
             httpGet:
               path: /health
