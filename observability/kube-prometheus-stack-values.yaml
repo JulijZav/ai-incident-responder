@@ -31,6 +31,12 @@ grafana:
       memory: 256Mi
     limits:
       memory: 1Gi
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      url: http://loki.monitoring.svc.cluster.local:3100
+      access: proxy
 
 kubeControllerManager:
   enabled: false

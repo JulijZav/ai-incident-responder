@@ -3,6 +3,9 @@ NAMESPACE			:= task-tracker
 RELEASE				:= tt
 CHART				:= charts/task-tracker
 
+LOKI_VERSION 		?= 7.6.0
+ALLOY_VERSION 		?= 1.15.0
+
 MONITORING_NS		:= monitoring
 KPS_RELEASE			:= kps
 KPS_VERSION			?= 92.10.1
@@ -51,12 +54,24 @@ status: ## Show nodes, pods and deploy history
 
 observability: .env ## Install the monitoring stack (Prometheus, Grafana, Alertmanager)
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+	helm repo add grafana https://grafana.github.io/helm-charts --force-update
 	. ./.env && helm upgrade --install $(KPS_RELEASE) prometheus-community/kube-prometheus-stack \
 		--version $(KPS_VERSION) \
 		--namespace $(MONITORING_NS) --create-namespace \
 		-f observability/kube-prometheus-stack-values.yaml \
 		--set grafana.adminPassword=$$GRAFANA_PASSWORD \
 		--wait --timeout 10m
+	helm upgrade --install loki grafana/loki \
+		--version $(LOKI_VERSION) \
+		--namespace $(MONITORING_NS) \
+		-f observability/loki-values.yaml \
+		--wait --timeout 10m
+	helm upgrade --install alloy grafana/alloy \
+		--version $(ALLOY_VERSION) \
+		--namespace $(MONITORING_NS) \
+		-f observability/alloy-values.yaml \
+		--set-file alloy.configMap.content=observability/alloy-config.alloy \
+		--wait --timeout 5m
 
 grafana: ## Open Grafana on http://localhost:3000 (user: admin)
 	kubectl port-forward -n $(MONITORING_NS) svc/$(KPS_RELEASE)-grafana 3000:80
