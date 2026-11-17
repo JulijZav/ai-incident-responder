@@ -1,0 +1,48 @@
+groups:
+  - name: task-tracker
+    rules:
+      - alert: TaskTrackerApiDown
+        expr: absent(up{namespace="task-tracker", service="tt-api"} == 1)
+        for: 1m
+        labels:
+          severity: critical
+          namespace: task-tracker
+        annotations:
+          summary: Task tracker API has no healthy scrape targets
+          description: No tt-api pod has answered a Prometheus scrape for over 1 minute. Check pods, recent deploys and probes.
+
+      - alert: TaskTrackerHighErrorRate
+        expr: |
+          sum by (namespace) (rate(http_requests_total{namespace="task-tracker", route!~"/health|/metrics", status_code=~"5.."}[5m]))
+            /
+          sum by (namespace) (rate(http_requests_total{namespace="task-tracker", route!~"/health|/metrics"}[5m]))
+            > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Task tracker 5xx error rate is {{ $value | humanizePercentage }}
+          description: More than 5% of API requests (probes and /metrics excluded) returned 5xx for 5 minutes.
+
+      - alert: TaskTrackerHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (namespace, le) (rate(http_request_duration_seconds_bucket{namespace="task-tracker", route!~"/health|/metrics"}[5m]))
+          ) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Task tracker p95 latency is {{ $value | humanizeDuration }}
+          description: 95th percentile API latency (probes and /metrics excluded) has been above 500ms for 10 minutes.
+
+      - alert: TaskTrackerContainerOOMKilled
+        expr: |
+          increase(kube_pod_container_status_restarts_total{namespace="task-tracker"}[10m]) > 0
+            and on (namespace, pod, container)
+          kube_pod_container_status_last_terminated_reason{namespace="task-tracker", reason="OOMKilled"} == 1
+        labels:
+          severity: warning
+        annotations:
+          summary: Container {{ $labels.container }} in pod {{ $labels.pod }} was OOMKilled
+          description: The container restarted in the last 10 minutes and its last termination reason is OOMKilled. Compare memory usage with its limit.

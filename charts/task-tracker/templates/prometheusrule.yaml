@@ -1,0 +1,12 @@
+{{- if .Values.alerts.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    app.kubernetes.io/name: task-tracker
+    app.kubernetes.io/component: api
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+{{ .Files.Get "rules/task-tracker.rules.yaml" | indent 2 }}
+{{- end }}

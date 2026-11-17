@@ -40,3 +40,6 @@ postgres:
 serviceMonitor:
   enabled: true
   interval: 15s
+
+alerts:
+  enabled: true

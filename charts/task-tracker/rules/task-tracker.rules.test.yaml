@@ -1,0 +1,105 @@
+rule_files:
+  - task-tracker.rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - name: api down fires after 1 minute without healthy targets
+    interval: 1m
+    input_series:
+      - series: 'up{namespace="task-tracker", service="tt-api", pod="tt-api-a"}'
+        values: '1x5 0x10'
+      - series: 'up{namespace="task-tracker", service="tt-api", pod="tt-api-b"}'
+        values: '1x5 0x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: TaskTrackerApiDown
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TaskTrackerApiDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              namespace: task-tracker
+            exp_annotations:
+              summary: Task tracker API has no healthy scrape targets
+              description: No tt-api pod has answered a Prometheus scrape for over 1 minute. Check pods, recent deploys and probes.
+
+  - name: error rate ignores probe traffic
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{namespace="task-tracker", method="GET", route="/tasks/", status_code="200"}'
+        values: '0+18x20'
+      - series: 'http_requests_total{namespace="task-tracker", method="GET", route="/tasks/", status_code="500"}'
+        values: '0+2x20'
+      - series: 'http_requests_total{namespace="task-tracker", method="GET", route="/health", status_code="200"}'
+        values: '0+40x20'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: TaskTrackerHighErrorRate
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TaskTrackerHighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              namespace: task-tracker
+            exp_annotations:
+              summary: Task tracker 5xx error rate is 10%
+              description: More than 5% of API requests (probes and /metrics excluded) returned 5xx for 5 minutes.
+
+  - name: no errors means no alert
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{namespace="task-tracker", method="GET", route="/tasks/", status_code="200"}'
+        values: '0+20x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: TaskTrackerHighErrorRate
+        exp_alerts: []
+
+  - name: slow requests fire high latency after 10 minutes
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_bucket{namespace="task-tracker", method="GET", route="/tasks/", le="1.0"}'
+        values: '0x20'
+      - series: 'http_request_duration_seconds_bucket{namespace="task-tracker", method="GET", route="/tasks/", le="5.0"}'
+        values: '0+60x20'
+      - series: 'http_request_duration_seconds_bucket{namespace="task-tracker", method="GET", route="/tasks/", le="+Inf"}'
+        values: '0+60x20'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: TaskTrackerHighLatency
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: TaskTrackerHighLatency
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: task-tracker
+            exp_annotations:
+              summary: Task tracker p95 latency is 4.8s
+              description: 95th percentile API latency (probes and /metrics excluded) has been above 500ms for 10 minutes.
+
+  - name: oomkilled container fires immediately
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_restarts_total{namespace="task-tracker", pod="tt-api-a", container="api"}'
+        values: '0x5 1x10'
+      - series: 'kube_pod_container_status_last_terminated_reason{namespace="task-tracker", pod="tt-api-a", container="api", reason="OOMKilled"}'
+        values: '_x5 1x10'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: TaskTrackerContainerOOMKilled
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: TaskTrackerContainerOOMKilled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: task-tracker
+              pod: tt-api-a
+              container: api
+            exp_annotations:
+              summary: Container api in pod tt-api-a was OOMKilled
+              description: The container restarted in the last 10 minutes and its last termination reason is OOMKilled. Compare memory usage with its limit.

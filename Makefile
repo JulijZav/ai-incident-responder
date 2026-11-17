@@ -14,7 +14,7 @@ TASK_TRACKER_DIR	?= ../task-tracker
 APP_VERSION 		?= 0.3.0
 IMAGE 				?= task-tracker:$(APP_VERSION)
 
-.PHONY: help up down cluster image deploy status observability grafana prometheus api
+.PHONY: help up down cluster image deploy status observability grafana prometheus api alerts-test
 
 help: ## Show available commands
 	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-8s %s\n", $$1, $$2}'
@@ -81,3 +81,7 @@ prometheus: ## Open Prometheus on http://localhost:9090
 
 api: ## Open task-tracker API on http://localhost:8000
 	kubectl port-forward -n $(NAMESPACE) svc/$(RELEASE)-api 8000:80
+
+alerts-test: ## Check and unit test the Prometheus alert rules
+	promtool check rules charts/task-tracker/rules/task-tracker.rules.yaml
+	promtool test rules charts/task-tracker/rules/task-tracker.rules.test.yaml
