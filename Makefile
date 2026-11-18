@@ -14,7 +14,7 @@ TASK_TRACKER_DIR	?= ../task-tracker
 APP_VERSION 		?= 0.3.0
 IMAGE 				?= task-tracker:$(APP_VERSION)
 
-.PHONY: help up down cluster image deploy status observability grafana prometheus api alerts-test
+.PHONY: help up down cluster image deploy status observability grafana prometheus api alerts-test alertmanager-secret alertmanager
 
 help: ## Show available commands
 	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-8s %s\n", $$1, $$2}'
@@ -52,7 +52,7 @@ status: ## Show nodes, pods and deploy history
 	kubectl get pods -n $(NAMESPACE)
 	helm history $(RELEASE) -n $(NAMESPACE)
 
-observability: .env ## Install the monitoring stack (Prometheus, Grafana, Alertmanager)
+observability: .env alertmanager-secret ## Install the monitoring stack (Prometheus, Grafana, Alertmanager)
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
 	helm repo add grafana https://grafana.github.io/helm-charts --force-update
 	. ./.env && helm upgrade --install $(KPS_RELEASE) prometheus-community/kube-prometheus-stack \
@@ -85,3 +85,14 @@ api: ## Open task-tracker API on http://localhost:8000
 alerts-test: ## Check and unit test the Prometheus alert rules
 	promtool check rules charts/task-tracker/rules/task-tracker.rules.yaml
 	promtool test rules charts/task-tracker/rules/task-tracker.rules.test.yaml
+
+alertmanager-secret: .env ## Create the Discord webhook Secret for Alertmanager from .env
+	@. ./.env && test -n "$$DISCORD_WEBHOOK_URL" || { echo "DISCORD_WEBHOOK_URL is missing in .env"; exit 1; }
+	@kubectl create namespace $(MONITORING_NS) --dry-run=client -o yaml | kubectl apply -f -
+	@. ./.env && kubectl create secret generic alertmanager-discord \
+		--namespace $(MONITORING_NS) \
+		--from-literal=webhook-url="$$DISCORD_WEBHOOK_URL" \
+		--dry-run=client -o yaml | kubectl apply -f -
+
+alertmanager: ## Open Alertmanager on http://localhost:9093
+	kubectl port-forward -n $(MONITORING_NS) svc/$(KPS_RELEASE)-alertmanager 9093:9093
