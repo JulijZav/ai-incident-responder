@@ -43,3 +43,6 @@ serviceMonitor:
 
 alerts:
   enabled: true
+
+dashboards:
+  enabled: true

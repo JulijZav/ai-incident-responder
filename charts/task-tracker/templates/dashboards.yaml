@@ -1,0 +1,12 @@
+{{- if .Values.dashboards.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-dashboards
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/name: task-tracker
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+{{ (.Files.Glob "dashboards/*.json").AsConfig | indent 2 }}
+{{- end }}
